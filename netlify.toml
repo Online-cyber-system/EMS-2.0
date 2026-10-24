@@ -1,0 +1,20 @@
+[build]
+  publish = "."
+
+# 1. Route the clean dashboard URL to the actual file
+[[redirects]]
+  from = "/Admin"
+  to = "/allinoneAdmin.html"
+  status = 200
+
+# 2. Route the clean print URL to the actual file
+[[redirects]]
+  from = "/Admit_Card_Download"
+  to = "/admitDownloadByAdmin.html"
+  status = 200
+
+# 3. Fallback: If someone types a random URL that doesn't exist, kick them back to login
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 404
