@@ -255,12 +255,17 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    const logRef = db.ref('admin_access_logs').push();
-                    await logRef.set({
-                        timestamp: Date.now(),
-                        event: "Successful Login",
-                        userAgent: navigator.userAgent
-                    });
+                    // Log access to the new Firebase Realtime DB
+                    try {
+                        const logRef = db.ref('admin_access_logs').push();
+                        await logRef.set({
+                            timestamp: Date.now(),
+                            event: "Successful Login",
+                            userAgent: navigator.userAgent
+                        });
+                    } catch (fbErr) {
+                        console.warn("Firebase log skipped:", fbErr);
+                    }
 
                     sessionStorage.setItem('adminToken', result.token);
                     showToast('Access Granted. Redirecting...', 'success');
