@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin Login - MVMN EMS</title>
+
+    <!-- PWA Meta Tags & Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MVMN EMS">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="icon" type="image/png" href="/logo.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;700;800&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+
+    <style>
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-5px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .dark .glass-card {
+            background: rgba(15, 23, 42, 0.8);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 h-screen flex items-center justify-center overflow-hidden relative p-4">
+
+    <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-3xl">
+    </div>
+    <div
+        class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-400/20 dark:bg-emerald-600/10 rounded-full blur-3xl">
+    </div>
+
+    <div id="toast-container"
+        class="fixed top-6 right-6 z-[99999] flex flex-col gap-3 w-full max-w-sm pointer-events-none"></div>
+
+    <div
+        class="glass-card w-full max-w-md p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 z-10 transform transition-all">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <img src="logo.png" alt="MVMN Logo" class="w-full h-full object-contain drop-shadow-md">
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white font-['Montserrat']">MVMN PORTAL</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Exam Management System Administration</p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div id="loginError"
+                class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-medium transition-all">
+                <i data-lucide="alert-triangle" class="w-5 h-5 shrink-0"></i>
+                <span id="loginErrorText"></span>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Admin User ID</label>
+                <div class="relative">
+                    <i data-lucide="user"
+                        class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                    <input type="text" id="adminId" required placeholder="Enter Admin ID..."
+                        class="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Admin Password</label>
+                <div class="relative w-full">
+                    <input type="password" id="adminPassword"
+                        class="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all text-sm"
+                        placeholder="••••••••" required>
+
+                    <button type="button" onclick="togglePassword()"
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <i data-lucide="eye" id="eyeIcon" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" id="loginBtn"
+                class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                <span>Login</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+        </form>
+    </div>
+
+    <div class="absolute bottom-6 right-6 flex items-center gap-3 z-20">
+        <button id="installAppBtn" onclick="installPWA()"
+            class="hidden px-4 py-3 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-lg flex items-center gap-2 transition-all">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Install App</span>
+        </button>
+        <button id="theme-toggle"
+            class="p-3 rounded-full bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700 transition-colors focus:outline-none">
+            <i data-lucide="moon" class="w-5 h-5 text-slate-600 dark:text-slate-400 block dark:hidden"></i>
+            <i data-lucide="sun" class="w-5 h-5 text-amber-500 hidden dark:block"></i>
+        </button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Register Service Worker for Standalone PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installAppBtn').classList.remove('hidden');
+        });
+
+        async function installPWA() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('installAppBtn').classList.add('hidden');
+            }
+            deferredPrompt = null;
+        }
+
+        // 1. Theme Toggle Logic
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // 2. NEW Firebase Configuration (ems-2-2a89c)
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_qh2jX2gf4edvedxz2NxPBnrQBtXiZXI",
+            authDomain: "ems-2-2a89c.firebaseapp.com",
+            databaseURL: "https://ems-2-2a89c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ems-2-2a89c",
+            storageBucket: "ems-2-2a89c.firebasestorage.app",
+            messagingSenderId: "651613142102",
+            appId: "1:651613142102:web:b1affede8f40dba13d8ff7",
+            measurementId: "G-0D3QFFRCYX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyL6F3zorT6b5XmFabj2kda6VPPgox-bM6Sk0SdGmYHmIegY2Ispde0dfdDWFumnCIXdw/exec";
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `transform transition-all duration-300 translate-x-full opacity-0 flex items-center p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg border-l-4`;
+            let iconName = 'info'; let iconColorClass = 'text-blue-500';
+            if (type === 'success') { toast.classList.add('border-l-emerald-500'); iconName = 'check-circle'; iconColorClass = 'text-emerald-500'; }
+            else if (type === 'error') { toast.classList.add('border-l-red-500'); iconName = 'alert-circle'; iconColorClass = 'text-red-500'; }
+
+            toast.innerHTML = `<i data-lucide="${iconName}" class="${iconColorClass} mr-3 w-5 h-5 flex-shrink-0"></i><span class="text-sm font-medium text-slate-800 dark:text-slate-200">${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons({ root: toast });
+
+            requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }); });
+            setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { toast.remove(); }, 300); }, 3000);
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const idInput = document.getElementById('adminId').value.trim();
+            const passInput = document.getElementById('adminPassword').value;
+            const btn = document.getElementById('loginBtn');
+            const origHtml = btn.innerHTML;
+            
+            const errorBox = document.getElementById('loginError');
+            const errorText = document.getElementById('loginErrorText');
+            const formCard = document.querySelector('.glass-card');
+
+            errorBox.classList.add('hidden');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 spin"></i> <span>Verifying...</span>`;
+            lucide.createIcons({ root: btn });
+
+            try {
+                const payload = {
+                    action: 'verify_login',
+                    userId: idInput,
+                    password: passInput
+                };
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const logRef = db.ref('admin_access_logs').push();
+                    await logRef.set({
+                        timestamp: Date.now(),
+                        event: "Successful Login",
+                        userAgent: navigator.userAgent
+                    });
+
+                    sessionStorage.setItem('adminToken', result.token);
+                    showToast('Access Granted. Redirecting...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/Admin'; 
+                    }, 800);
+
+                } else {
+                    throw new Error(result.message || "Invalid credentials");
+                }
+            } catch (error) {
+                errorBox.classList.remove('hidden');
+                errorText.innerText = error.message;
+                lucide.createIcons({ root: errorBox });
+                
+                formCard.classList.add('shake');
+                setTimeout(() => formCard.classList.remove('shake'), 400);
+
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                lucide.createIcons({ root: btn });
+                
+                const passField = document.getElementById('adminPassword');
+                passField.value = '';
+                passField.focus();
+            }
+        }
+
+        function togglePassword() {
+            const input = document.getElementById('adminPassword');
+            const icon = document.getElementById('eyeIcon');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons({ root: icon.parentElement });
+        }
+    </script>
+</body>
+
+</html>
