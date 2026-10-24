@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Exam Management System - Admin</title>
+
+    <!-- PWA Standalone App Configuration -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MVMN EMS">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="icon" type="image/png" href="/logo.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;700;800&family=Roboto:wght@400;500;700&family=Libre+Barcode+39&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <script>
+        if (!sessionStorage.getItem("adminToken")) {
+            window.location.replace("/");
+        }
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+
+    <style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+    <style>
+        @media (max-width: 1023px) {
+            #sidebar nav a span { display: block !important; }
+        }
+        @media print {
+            #sidebar, header, main>div:not(#admitCardRender) { display: none !important; }
+            body, main { background: white !important; height: auto !important; overflow: visible !important; }
+            #admitCardRender { display: block !important; width: 100%; }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 h-screen flex overflow-hidden">
+
+    <div style="font-family: 'Libre Barcode 39', cursive; position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0;">PRELOAD</div>
+
+    <div id="toast-container" class="fixed top-4 right-4 sm:top-6 sm:right-6 z-[99999] flex flex-col gap-3 w-auto max-w-[90vw] sm:w-full sm:max-w-sm pointer-events-none items-end"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full lg:relative lg:inset-auto lg:z-auto lg:w-[10%] lg:min-w-[80px] lg:translate-x-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out flex-shrink-0">
+        <div class="h-14 flex items-center justify-center border-b border-slate-200 dark:border-slate-800">
+            <div class="flex items-center gap-2 text-blue-600 dark:text-blue-500 font-bold tracking-tight text-sm lg:text-base">
+                <img src="logo.png" alt="MVMN Logo" class="w-8 h-8 object-contain">
+                <span class="block lg:hidden xl:block">MVMN</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto scrollbar-hide py-4 px-2 flex flex-col gap-2 items-center xl:items-stretch">
+            <a href="#" onclick="switchTab('dashboard')" id="navDashboard"
+                class="flex items-center xl:justify-start justify-center gap-3 px-3 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium text-sm transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> <span class="hidden xl:block">Dashboard</span>
+            </a>
+            <a href="#" onclick="switchTab('students')" id="navStudents"
+                class="flex items-center lg:justify-start justify-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-medium text-sm group">
+                <i data-lucide="users" class="w-5 h-5 group-hover:text-blue-600 transition-colors"></i>
+                <span class="hidden lg:block">Students</span>
+            </a>
+            <a href="#" onclick="switchTab('pending')" id="navPending"
+                class="flex items-center xl:justify-start justify-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-medium text-sm group">
+                <i data-lucide="file-text" class="w-5 h-5 group-hover:text-blue-600 transition-colors"></i> <span
+                    class="hidden xl:block">Applications</span>
+            </a>
+            <a href="#" onclick="switchTab('promotion')" id="navPromotion"
+                class="flex items-center xl:justify-start justify-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-medium text-sm group relative">
+                <i data-lucide="graduation-cap" class="w-5 h-5 group-hover:text-blue-600 transition-colors"></i>
+                <span class="hidden xl:block">Promotion</span>
+                <span id="navPromoBadge" class="hidden absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+            </a>
+            <a href="#" onclick="switchTab('settings')" id="navSettings"
+                class="flex items-center xl:justify-start justify-center gap-3 px-3 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors font-medium text-sm group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:text-blue-600 transition-colors"></i> <span
+                    class="hidden xl:block">Settings</span>
+            </a>
+            <a href="#" onclick="handleLogout(event)"
+                class="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all font-medium mt-auto">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                <span>Logout</span>
+            </a>
+        </nav>
+    </aside>
+    <div id="drawerBackdrop" onclick="closeDrawer()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <main class="w-full lg:w-[90%] flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+
+        <header class="h-[56px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex justify-between items-center px-6 lg:px-10 flex-shrink-0 transition-all duration-300 z-20 shadow-sm">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleDrawer()" class="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <i data-lucide="menu" class="w-5 h-5 text-slate-600 dark:text-slate-400"></i>
+                </button>
+                <h1 class="font-semibold text-lg text-slate-800 dark:text-white tracking-tight">
+                    <span class="hidden sm:inline">Exam Management System</span>
+                    <span class="sm:hidden">EMS</span>
+                </h1>
+            </div>
+            <div class="flex items-center gap-3 sm:gap-5">
+                <button id="pwaInstallBtn" onclick="installAdminPWA()"
+                    class="hidden items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl shadow-sm font-semibold text-xs transition-all">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Install App</span>
+                </button>
+
+                <div class="relative flex items-center">
+                    <button id="bellBtn" onclick="toggleMobileNotif()" class="relative p-2 rounded-xl flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all focus:outline-none">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span id="notificationBadge" class="hidden absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center border-2 border-white dark:border-slate-900">0</span>
+                    </button>
+                </div>
+
+                <button id="newDataAlert" onclick="loadNewData()" class="hidden items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-full shadow-md font-medium text-sm transition-transform transform hover:-translate-y-0.5">
+                    <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                    <span id="newDataText">1 New Application</span>
+                </button>
+
+                <button id="theme-toggle" class="p-2 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none">
+                    <i data-lucide="moon" class="w-5 h-5 text-slate-600 dark:text-slate-400 block dark:hidden"></i>
+                    <i data-lucide="sun" class="w-5 h-5 text-amber-500 hidden dark:block"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD TAB -->
+        <div id="dashboardView" class="flex-1 flex flex-col p-4 sm:p-8 overflow-y-auto scrollbar-hide">
+            <div class="mb-6 flex-shrink-0 flex items-start sm:items-center justify-between w-full">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Dashboard</h2>
+                    <p id="dashSystemInfo" class="text-sm text-slate-500 dark:text-slate-400 mt-1">Loading system info...</p>
+                </div>
+                <button onclick="renderDashboard(this)" class="ml-auto flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-300 p-2.5 sm:px-4 sm:py-2 rounded-xl text-sm font-medium transition-all shadow-sm focus:outline-none">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- PENDING PROMOTION ALERT BANNER -->
+            <div id="dashPromotionBanner" class="hidden mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm flex-shrink-0">
+                <div class="flex items-start gap-3">
+                    <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2 flex-wrap">
+                            Session Promotion Pending!
+                            <span id="dashPromoSessionTag" class="px-2 py-0.5 text-[10px] rounded-full bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-200 font-extrabold"></span>
+                        </h4>
+                        <p id="dashPromoMessage" class="text-xs text-amber-700 dark:text-amber-400 mt-1"></p>
+                    </div>
+                </div>
+                <button onclick="switchTab('promotion')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors shrink-0 flex items-center gap-1.5">
+                    <span>Promote Students</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 flex-shrink-0">
+                <div onclick="openStudentsStatsModal()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer relative group">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex justify-between items-center">
+                        Total Students <i data-lucide="pie-chart" class="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </p>
+                    <p id="statTotalStudents" class="text-3xl font-bold text-slate-800 dark:text-white">—</p>
+                    <p class="text-xs text-slate-400 mt-1">In the School</p>
+                </div>
+
+                <div onclick="switchTab('pending')" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pending Applications</p>
+                    <p id="statPending" class="text-3xl font-bold text-amber-500">—</p>
+                    <p class="text-xs text-slate-400 mt-1">Awaiting review</p>
+                </div>
+
+                <div onclick="openAdmitStatsModal()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer relative group">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex justify-between items-center">
+                        Admit Cards <i data-lucide="donut" class="w-4 h-4 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 w-full">
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statReleased" class="text-2xl font-bold text-emerald-600 leading-none mb-1.5">—</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Released</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statNotReleased" class="text-2xl font-bold text-slate-500 leading-none mb-1.5">—</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Not Released</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statBlocked" class="text-2xl font-bold text-red-500 leading-none mb-1.5">—</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Blocked</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0">Portal Status</p>
+                        <button onclick="fetchSystemConfig(this)" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i></button>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">Application</span>
+                            <span id="dashAppStatus" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-red-100 text-red-700 border border-red-200">CLOSED</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-slate-500">Admit Download</span>
+                            <span id="dashAdmitStatus" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-red-100 text-red-700 border border-red-200">CLOSED</span>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('settings')" class="mt-3 w-full text-[10px] font-bold text-blue-600 hover:underline text-left">Manage in Settings →</button>
+                </div>
+
+                <div onclick="openAnalyticsModal('reviews')" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm cursor-pointer">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Review Quota</p>
+                    <div class="flex items-end gap-2 mb-2">
+                        <p id="statQuotaUsed" class="text-3xl font-bold text-blue-600">0</p>
+                        <p id="statQuotaLimit" class="text-sm font-medium text-slate-500 mb-1">/ 80</p>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2">
+                        <div id="quotaProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div onclick="openAnalyticsModal('submissions')" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm cursor-pointer">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Application Quota</p>
+                    <div class="flex items-end gap-2 mb-2">
+                        <p id="statSubQuotaUsed" class="text-3xl font-bold text-purple-600">0</p>
+                        <p id="statSubQuotaLimit" class="text-sm font-medium text-slate-500 mb-1">/ 70</p>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2">
+                        <div id="subQuotaProgressBar" class="bg-purple-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- GENDER DISTRIBUTION CARD -->
+                <div onclick="openGenderStatsModal()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm cursor-pointer">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Students by Gender</p>
+                    <div class="grid grid-cols-3 gap-2 w-full">
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statGenderMale" class="text-2xl font-bold text-blue-600 leading-none mb-1.5">0</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Boys</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statGenderFemale" class="text-2xl font-bold text-pink-500 leading-none mb-1.5">0</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Girls</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statGenderUnset" class="text-2xl font-bold text-amber-500 leading-none mb-1.5">0</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Other</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROMOTION STATUS CARD -->
+                <div onclick="switchTab('promotion')" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm cursor-pointer">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Promotion Status</p>
+                    <div class="grid grid-cols-3 gap-2 w-full">
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statPromoDone" class="text-2xl font-bold text-emerald-600 leading-none mb-1.5">0</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Promoted</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statPromoPending" class="text-2xl font-bold text-amber-500 leading-none mb-1.5">0</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Pending</p>
+                        </div>
+                        <div class="flex flex-col items-center text-center">
+                            <p id="statPromoDropout" class="text-2xl font-bold text-red-500 leading-none mb-1.5">0</p>
+                            <p class="text-[10px] text-slate-400 uppercase">Drop Out</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-24 lg:mb-6">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Applications — Last 7 Days</h3>
+                    <div class="relative h-56"><canvas id="chartApplicationsTrend"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">Students by Class with Admit Status</h3>
+                    <div class="relative h-56"><canvas id="chartClassBreakdown"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PENDING APPLICATIONS TAB -->
+        <div id="pendingView" class="hidden flex-1 flex flex-col p-4 lg:p-8 overflow-y-auto lg:overflow-hidden scrollbar-hide">
+            <div class="flex items-start sm:items-center justify-between w-full mb-6 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Application Manager</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Approve or reject student applications</p>
+                </div>
+                <button onclick="fetchData()" id="refreshBtn" class="ml-auto flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 sm:px-4 sm:py-2 rounded-xl text-sm font-medium shadow-sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4" id="refreshIcon"></i>
+                    <span class="hidden sm:inline">Reload</span>
+                </button>
+            </div>
+
+            <div class="flex flex-col lg:flex-row items-start lg:items-center gap-3 mb-6 w-full flex-wrap flex-shrink-0">
+                <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <div class="flex flex-1 lg:flex-none bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <button onclick="setPendingFilter('All', this)" class="app-filter-btn flex-1 lg:flex-none px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500">All</button>
+                        <button onclick="setPendingFilter('Pending', this)" class="app-filter-btn flex-1 lg:flex-none px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-900 text-blue-600 shadow-sm">Pending</button>
+                        <button onclick="setPendingFilter('Approved', this)" class="app-filter-btn flex-1 lg:flex-none px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500">Approved</button>
+                        <button onclick="setPendingFilter('Rejected', this)" class="app-filter-btn flex-1 lg:flex-none px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500">Rejected</button>
+                    </div>
+
+                    <div id="pendingActionsWrapper" class="flex items-center gap-2 w-auto justify-end transition-all duration-300">
+                        <button onclick="bulkPendingAction('approve')" class="px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 hidden bulk-pending-btn">Approve Selected</button>
+                        <button onclick="bulkPendingAction('reject')" class="px-3 py-1.5 text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-100 hidden bulk-pending-btn">Reject Selected</button>
+                        <button onclick="openUniversalDeleteModal('pending')" class="shrink-0 flex items-center justify-center bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 p-2 rounded-xl" title="Delete ALL Pending"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 w-full lg:w-auto lg:ml-auto mt-2 lg:mt-0">
+                    <div class="relative w-full lg:w-56">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="searchPending" placeholder="Search ID or Name..." oninput="handlePendingSearch()" class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm relative mb-24 lg:mb-0 flex-shrink-0 lg:flex-shrink lg:flex-1 lg:min-h-0 flex flex-col">
+                <div class="overflow-x-auto lg:overflow-auto custom-scrollbar relative rounded-2xl pb-2 lg:flex-1">
+                    <table class="w-full text-left border-collapse min-w-max">
+                        <thead class="bg-slate-50 dark:bg-slate-800/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
+                            <tr class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                <th class="px-4 py-3 w-10 text-center sticky left-0 z-40 bg-slate-50 dark:bg-slate-800 border-r"><input type="checkbox" id="selectAllPending" onclick="toggleSelectAllPending(this)"></th>
+                                <th class="px-4 py-3">Date & Time</th>
+                                <th class="px-4 py-3 border-r">Application ID</th>
+                                <th class="px-4 py-3">Student ID</th>
+                                <th class="px-4 py-3">Student Name</th>
+                                <th class="px-4 py-3">Gender</th>
+                                <th class="px-4 py-3">Class</th>
+                                <th class="px-4 py-3">Section</th>
+                                <th class="px-4 py-3">Roll No</th>
+                                <th class="px-4 py-3">Date of Birth</th>
+                                <th class="px-4 py-3">Father's Name</th>
+                                <th class="px-4 py-3">Phone Number</th>
+                                <th class="px-4 py-3 border-r">Email ID</th>
+                                <th class="px-4 py-3 text-center sticky right-0 z-40 bg-slate-50 dark:bg-slate-800 w-[120px]">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                            <tr><td colspan="14" class="py-16 text-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-600 mx-auto"></i></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MANAGE STUDENTS TAB -->
+        <div id="studentsView" class="hidden flex-1 flex flex-col p-4 lg:p-8 overflow-y-auto lg:overflow-hidden scrollbar-hide">
+            <div class="flex items-start sm:items-center justify-between w-full mb-6 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Manage Students</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Add Students, Edit Records & Admit Status</p>
+                </div>
+                <button onclick="fetchFinalStudents()" id="refreshBtnStudents" class="ml-auto flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 sm:px-4 sm:py-2 rounded-xl text-sm font-medium shadow-sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Reload</span>
+                </button>
+            </div>
+
+            <div class="flex flex-col lg:flex-row items-start lg:items-center gap-3 mb-6 w-full flex-wrap flex-shrink-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="bulkAction('Release')" class="px-3 py-1.5 text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 hidden bulk-btn">Release Admit</button>
+                    <button onclick="bulkAction('Block')" class="px-3 py-1.5 text-sm font-medium bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 hidden bulk-btn">Block</button>
+                    <button onclick="exportData()" class="px-3 py-1.5 text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border rounded-lg flex items-center gap-1"><i data-lucide="download" class="w-4 h-4"></i> Export</button>
+                    <button onclick="openModal('addStudentModal')" class="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> Add Student</button>
+                    <button onclick="openUniversalDeleteModal('final')" class="flex items-center justify-center bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 p-2 rounded-xl" title="Delete ALL Students"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+
+                <div class="flex items-center gap-3 w-full lg:w-auto lg:ml-auto mt-2 lg:mt-0">
+                    <div class="relative w-full lg:w-56">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="searchStudent" placeholder="Search ID or Name..." oninput="handleStudentSearch()" class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Class Filters Row -->
+            <div class="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide pb-2 flex-shrink-0" id="classFilters">
+                <button onclick="applyClassFilter('All', this)" class="class-filter-btn filter-active bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap">All</button>
+                <button onclick="applyClassFilter('1', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 1</button>
+                <button onclick="applyClassFilter('2', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 2</button>
+                <button onclick="applyClassFilter('3', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 3</button>
+                <button onclick="applyClassFilter('4', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 4</button>
+                <button onclick="applyClassFilter('5', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 5</button>
+                <button onclick="applyClassFilter('6', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 6</button>
+                <button onclick="applyClassFilter('7', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 7</button>
+                <button onclick="applyClassFilter('8', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 8</button>
+                <button onclick="applyClassFilter('9', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 9</button>
+                <button onclick="applyClassFilter('10', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 10</button>
+                <button onclick="applyClassFilter('11', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 11</button>
+                <button onclick="applyClassFilter('12', this)" class="class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 whitespace-nowrap">Class 12</button>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm relative mb-24 lg:mb-0 flex-shrink-0 lg:flex-shrink lg:flex-1 lg:min-h-0 flex flex-col">
+                <div class="overflow-x-auto lg:overflow-auto custom-scrollbar relative rounded-2xl pb-2 lg:flex-1">
+                    <table class="w-full text-left border-collapse min-w-max" id="studentsTableElement">
+                        <thead class="bg-slate-50 dark:bg-slate-800/95 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
+                            <tr class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                <th class="px-4 py-3 w-10 text-center sticky left-0 z-40 bg-slate-50 dark:bg-slate-800 border-r"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                                <th class="px-4 py-3">Date & Time</th>
+                                <th class="px-4 py-3 border-r">Application ID</th>
+                                <th class="px-4 py-3">Student ID</th>
+                                <th class="px-4 py-3">Name</th>
+                                <th class="px-4 py-3">Gender</th>
+                                <th class="px-4 py-3">Class</th>
+                                <th class="px-4 py-3">Section</th>
+                                <th class="px-4 py-3">Roll</th>
+                                <th class="px-4 py-3">DOB</th>
+                                <th class="px-4 py-3">Father's Name</th>
+                                <th class="px-4 py-3">Phone</th>
+                                <th class="px-4 py-3 border-r">Email ID</th>
+                                <th class="px-4 py-3 border-x bg-amber-50/50 text-amber-700">Admit Status</th>
+                                <th class="px-4 py-3 bg-blue-50/50 text-blue-700">HY Serial No.</th>
+                                <th class="px-4 py-3 bg-blue-50/50 text-blue-700">FY Serial No.</th>
+                                <th class="px-4 py-3 text-center sticky right-0 z-40 bg-slate-50 dark:bg-slate-800 w-[100px]">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody" class="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+                            <tr><td colspan="17" class="py-16 text-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-600 mx-auto"></i></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROMOTION & DROP-OUT MANAGER TAB -->
+        <div id="promotionView" class="hidden flex-1 flex flex-col p-4 lg:p-8 overflow-y-auto lg:overflow-hidden scrollbar-hide">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full mb-4 gap-3 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i data-lucide="graduation-cap" class="w-6 h-6 text-blue-600"></i> Session Promotion & Drop-Out Manager
+                    </h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Promote students, assign new Section & Roll No, auto-generate Student ID & Serial Numbers</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 px-3 py-1.5 rounded-xl">
+                        <span class="text-xs font-bold text-slate-500 uppercase">Target Session:</span>
+                        <input type="text" id="promoTargetSession" value="2026-2027" onchange="savePromoSessionConfig()" class="w-24 text-sm font-bold text-blue-600 bg-transparent focus:outline-none">
+                    </div>
+                    <button onclick="resetAllPromotionsModal()" class="px-3 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 rounded-xl">Start New Cycle</button>
+                </div>
+            </div>
+
+            <!-- Summary Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 flex-shrink-0">
+                <div class="bg-white dark:bg-slate-900 border p-3.5 rounded-xl flex items-center justify-between">
+                    <div><p class="text-[11px] font-bold text-slate-400 uppercase">Total Active</p><p id="promoPageTotal" class="text-2xl font-bold">0</p></div>
+                    <i data-lucide="users" class="w-6 h-6 text-blue-500 opacity-70"></i>
+                </div>
+                <div class="bg-emerald-50/60 border border-emerald-200 p-3.5 rounded-xl flex items-center justify-between">
+                    <div><p class="text-[11px] font-bold text-emerald-600 uppercase">Promoted</p><p id="promoPageDone" class="text-2xl font-bold text-emerald-600">0</p></div>
+                    <i data-lucide="check-circle-2" class="w-6 h-6 text-emerald-500"></i>
+                </div>
+                <div class="bg-amber-50/60 border border-amber-200 p-3.5 rounded-xl flex items-center justify-between">
+                    <div><p class="text-[11px] font-bold text-amber-600 uppercase">Pending Promotion</p><p id="promoPagePending" class="text-2xl font-bold text-amber-500">0</p></div>
+                    <i data-lucide="clock" class="w-6 h-6 text-amber-500"></i>
+                </div>
+                <div class="bg-red-50/60 border border-red-200 p-3.5 rounded-xl flex items-center justify-between">
+                    <div><p class="text-[11px] font-bold text-red-600 uppercase">Drop Out</p><p id="promoPageDropout" class="text-2xl font-bold text-red-500">0</p></div>
+                    <i data-lucide="user-x" class="w-6 h-6 text-red-500"></i>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 flex-shrink-0">
+                <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1" id="promoClassPills"></div>
+                <div class="flex items-center gap-2 ml-auto flex-wrap">
+                    <select id="promoStatusFilter" onchange="renderPromotionTable()" class="p-2 text-xs font-bold border rounded-xl bg-white dark:bg-slate-800 dark:text-white">
+                        <option value="All">All Active Students</option>
+                        <option value="Pending">Pending Promotion Only</option>
+                        <option value="Promoted">Already Promoted</option>
+                        <option value="DropOut">Drop Out List</option>
+                    </select>
+                    <button onclick="autoAssignNewRolls()" class="px-3 py-2 text-xs font-bold bg-indigo-50 text-indigo-700 border rounded-xl">Auto-Roll (01, 02...)</button>
+                    <button onclick="bulkPromoteSelected()" class="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm flex items-center gap-1.5">
+                        <i data-lucide="chevrons-up" class="w-4 h-4"></i> Promote Selected
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 rounded-2xl shadow-sm relative mb-24 lg:mb-0 flex-shrink-0 lg:flex-shrink lg:flex-1 lg:min-h-0 flex flex-col">
+                <div class="overflow-x-auto lg:overflow-auto custom-scrollbar relative rounded-2xl pb-2 lg:flex-1">
+                    <table class="w-full text-left border-collapse min-w-max">
+                        <thead class="bg-slate-50 dark:bg-slate-800 border-b sticky top-0 z-30">
+                            <tr class="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                <th class="px-4 py-3 w-10 text-center"><input type="checkbox" id="selectAllPromo" onclick="toggleSelectAllPromo(this)"></th>
+                                <th class="px-4 py-3">Current ID</th>
+                                <th class="px-4 py-3">Student Name</th>
+                                <th class="px-4 py-3">Gender</th>
+                                <th class="px-4 py-3">Old Class / Sec / Roll</th>
+                                <th class="px-4 py-3 bg-blue-50 text-blue-700">New Class</th>
+                                <th class="px-4 py-3 bg-blue-50 text-blue-700">New Section</th>
+                                <th class="px-4 py-3 bg-blue-50 text-blue-700">New Roll No</th>
+                                <th class="px-4 py-3 bg-emerald-50 text-emerald-700">New ID Preview</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="promotionTableBody" class="divide-y text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="settingsView" class="hidden flex-1 flex flex-col p-4 sm:p-8 overflow-y-auto scrollbar-hide">
+            <div class="flex items-start sm:items-center justify-between w-full mb-6 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">System Settings</h2>
+                    <p class="text-sm text-slate-500 mt-1">Master Control Room: Portals, Backups & Recovery</p>
+                </div>
+                <button onclick="reloadSettingsAndRoutines(this)" class="ml-auto p-2.5 bg-white dark:bg-slate-800 border rounded-xl shadow-sm"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-24 lg:mb-6">
+                <div class="bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">Global Exam State</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-2">Active Examination</label>
+                            <select id="sysActiveExam" onchange="saveSystemConfig()" class="w-full p-2.5 text-sm border rounded-lg dark:bg-slate-800 dark:text-white">
+                                <option value="HY">Half-Yearly Examination</option>
+                                <option value="FY">Final Year Examination</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-2">Academic Session</label>
+                            <input type="text" id="sysExamSession" onchange="saveSystemConfig()" placeholder="e.g. 2025-2026" class="w-full p-2.5 text-sm border rounded-lg dark:bg-slate-800 dark:text-white">
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t pt-4 cursor-pointer hover:bg-slate-50 rounded-xl p-3 flex justify-between items-center" onclick="openModal('routineModal')">
+                        <div><p class="font-bold text-sm">Exam Routines Setup</p><p class="text-xs text-slate-500">Create, edit, or delete exam dates & subjects.</p></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">Application Portal</h3>
+                    <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-xl mb-4">
+                        <span id="appStatusBadge" class="px-2.5 py-1 text-xs font-bold rounded-md bg-red-100 text-red-700">PORTAL CLOSED</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="appPortalToggle" class="sr-only peer" onchange="triggerPortalModal('app')">
+                            <div class="w-14 h-7 bg-red-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div id="appLinkContainer" class="hidden">
+                        <label class="block text-[10px] font-bold uppercase mb-1">Secure Public Link</label>
+                        <div class="flex">
+                            <input type="text" id="sysPortalLink" readonly class="w-full p-2.5 text-xs border rounded-l-lg bg-slate-100 dark:bg-slate-950">
+                            <button onclick="copyLink('sysPortalLink')" class="px-4 bg-slate-200 rounded-r-lg font-bold"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">Admit Download Portal</h3>
+                    <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-xl mb-4">
+                        <span id="admitStatusBadge" class="px-2.5 py-1 text-xs font-bold rounded-md bg-red-100 text-red-700">PORTAL CLOSED</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="admitPortalToggle" class="sr-only peer" onchange="triggerPortalModal('admit')">
+                            <div class="w-14 h-7 bg-red-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div id="admitLinkContainer" class="hidden">
+                        <label class="block text-[10px] font-bold uppercase mb-1">Secure Download Link</label>
+                        <div class="flex">
+                            <input type="text" id="sysAdmitPortalLink" readonly class="w-full p-2.5 text-xs border rounded-l-lg bg-slate-100 dark:bg-slate-950">
+                            <button onclick="copyLink('sysAdmitPortalLink')" class="px-4 bg-slate-200 rounded-r-lg font-bold"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">Scanner Verifier App</h3>
+                    <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-xl mb-4">
+                        <span id="verifierStatusBadge" class="px-2.5 py-1 text-xs font-bold rounded-md bg-red-100 text-red-700">OFFLINE</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="verifierToggle" class="sr-only peer" onchange="toggleVerifier()">
+                            <div class="w-14 h-7 bg-red-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div id="verifierPinContainer" class="hidden">
+                        <label class="block text-[10px] font-bold uppercase mb-1">Active Access PIN</label>
+                        <div class="flex">
+                            <input type="text" id="sysVerifierPin" readonly class="w-full p-2.5 text-center text-lg tracking-[0.5em] font-mono font-bold border rounded-l-lg bg-slate-100 dark:bg-slate-950">
+                            <button onclick="copyLink('sysVerifierPin')" class="px-4 bg-slate-200 rounded-r-lg font-bold"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FIREBASE BACKUP & RECOVERY CENTER -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-900 border rounded-2xl p-6 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold">Firebase Backup & Data Recovery Center</h3>
+                            <p class="text-xs text-slate-500">Safely mirror Google Sheet data to Firebase, backup, or recover anytime.</p>
+                        </div>
+                        <span id="fbLastBackupBadge" class="px-3 py-1 text-xs font-bold rounded-full bg-indigo-50 text-indigo-600 border">Cloud Backup Ready</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <button onclick="syncAllDataToFirebaseCloud(this)" class="p-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2">
+                            <i data-lucide="cloud-upload" class="w-4 h-4"></i> 1-Click Sync to Firebase
+                        </button>
+                        <button onclick="downloadFullSystemBackup()" class="p-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2">
+                            <i data-lucide="hard-drive-download" class="w-4 h-4"></i> Download Backup (.JSON)
+                        </button>
+                        <button onclick="openModal('dataMigrationModal')" class="p-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-2">
+                            <i data-lucide="clipboard-paste" class="w-4 h-4"></i> Manual Copy-Paste / Restore
+                        </button>
+                        <button onclick="restoreFromFirebaseSnapshot()" class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Recover Snapshot
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODALS -->
+        <div id="portalConfigModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6 transform scale-95 transition-transform duration-300">
+                <div class="flex items-center gap-3 border-b pb-3 mb-4">
+                    <i id="configModalIcon" data-lucide="power" class="w-6 h-6 text-emerald-600"></i>
+                    <h3 class="text-lg font-bold" id="configModalTitle">Portal Configuration</h3>
+                </div>
+                <p id="configModalDesc" class="text-sm text-slate-600 dark:text-slate-400 mb-4"></p>
+                <div id="configModalInputs" class="hidden">
+                    <div id="classConfigSection" class="hidden mb-4">
+                        <label class="block text-xs font-bold uppercase mb-2">Allowed Classes</label>
+                        <div class="grid grid-cols-4 gap-2 mb-2">
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="1"> 1</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="2"> 2</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="3"> 3</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="4"> 4</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="5"> 5</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="6"> 6</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="7"> 7</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="8"> 8</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="9"> 9</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="10"> 10</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="11"> 11</label>
+                            <label class="text-sm"><input type="checkbox" class="cls-check" value="12"> 12</label>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-xs font-bold uppercase mb-2">Auto-Close Timer</label>
+                        <input type="datetime-local" id="autoCloseTime" class="w-full p-2.5 border rounded-lg text-sm dark:bg-slate-800 dark:text-white">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button onclick="cancelPortalToggle()" class="px-5 py-2.5 text-sm font-medium text-slate-600">Cancel</button>
+                    <button id="confirmPortalBtn" class="px-5 py-2.5 text-sm bg-emerald-600 text-white rounded-xl font-medium shadow-sm">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="routineModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div class="flex justify-between items-center border-b pb-3 mb-5">
+                    <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="calendar-clock" class="w-5 h-5 text-blue-600"></i> Manage Exam Routine</h3>
+                    <button type="button" onclick="closeModal('routineModal')" class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <form id="routineForm" onsubmit="submitRoutine(event)">
+                    <div class="grid grid-cols-2 gap-4 mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1">Target Examination</label>
+                            <select id="routineExamType" onchange="populateRoutineForm()" class="w-full p-2.5 text-sm border rounded-lg dark:bg-slate-800 dark:text-white">
+                                <option value="HY">Half-Yearly Examination</option>
+                                <option value="FY">Final Year Examination</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase mb-1">Target Class</label>
+                            <select id="routineClass" onchange="populateRoutineForm()" class="w-full p-2.5 text-sm border rounded-lg dark:bg-slate-800 dark:text-white">
+                                <option value="1">Class 1</option><option value="2">Class 2</option><option value="3">Class 3</option><option value="4">Class 4</option><option value="5">Class 5</option><option value="6">Class 6</option><option value="7">Class 7</option><option value="8">Class 8</option><option value="9">Class 9</option><option value="10">Class 10</option><option value="11">Class 11</option><option value="12">Class 12</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="space-y-3" id="routineRowsContainer"></div>
+                    <div class="mt-6 pt-5 border-t flex justify-between items-center">
+                        <button type="button" onclick="deleteAllRoutines()" class="px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg font-medium">Delete All</button>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="deleteIndividualRoutine()" class="px-4 py-2.5 text-sm bg-slate-100 rounded-xl">Delete</button>
+                            <button type="submit" id="saveRoutineBtn" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium">Save Routine</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="confirmModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div id="confirmIconBox" class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"><i id="confirmIcon" data-lucide="alert-triangle" class="w-6 h-6"></i></div>
+                    <div><h3 id="confirmTitle" class="text-xl font-bold">Confirm Action</h3><p id="confirmAppId" class="text-sm font-medium text-slate-500"></p></div>
+                </div>
+                <p id="confirmMessage" class="text-slate-600 dark:text-slate-400 mb-6"></p>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeConfirmModal()" class="px-5 py-2.5 rounded-xl font-medium text-slate-600">Cancel</button>
+                    <button id="confirmExecuteBtn" class="px-5 py-2.5 rounded-xl font-medium text-white shadow-sm">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admitModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6">
+                <h3 class="text-lg font-bold mb-1">Change Admit Status</h3>
+                <p id="admitStatusText" class="text-sm text-slate-500 mb-5"></p>
+                <div class="flex flex-col gap-3">
+                    <button id="btnAdmitRelease" onclick="submitAdmitStatus('Release')" class="py-2.5 border rounded-lg font-medium text-emerald-700 bg-emerald-50">Release</button>
+                    <button id="btnAdmitNotRelease" onclick="submitAdmitStatus('Not Release')" class="py-2.5 border rounded-lg font-medium text-slate-700 bg-slate-50">Not Release</button>
+                    <button id="btnAdmitBlock" onclick="submitAdmitStatus('Block')" class="py-2.5 border rounded-lg font-medium text-red-700 bg-red-50">Block</button>
+                </div>
+                <div class="mt-5 text-right"><button onclick="closeModal('admitModal')" class="px-4 py-2 text-sm text-slate-500">Cancel</button></div>
+            </div>
+        </div>
+
+        <div id="addStudentModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center opacity-0 transition-opacity duration-300">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <h3 class="text-xl font-bold mb-4 border-b pb-2">Add Student Manually</h3>
+                <form id="addStudentForm" onsubmit="submitAddStudent(event)">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="block text-xs font-medium mb-1">Student Name</label><input type="text" id="addName" placeholder="Full Name" required class="w-full p-2 border rounded-lg uppercase dark:bg-slate-800 dark:text-white"></div>
+                        <div><label class="block text-xs font-medium mb-1">Gender</label><select id="addGender" required class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"><option value="">-- SELECT --</option><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option><option value="OTHER">OTHER</option></select></div>
+                        <div><label class="block text-xs font-medium mb-1">Class</label><select id="addClass" required class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"><option value="">-- SELECT --</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select></div>
+                        <div><label class="block text-xs font-medium mb-1">Section</label><select id="addSection" required class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"><option value="">-- SELECT --</option><option value="MAHA">MAHA</option><option value="RISHI">RISHI</option><option value="NONE">NONE</option></select></div>
+                        <div><label class="block text-xs font-medium mb-1">Roll No</label><input type="text" id="addRoll" required pattern="\d{2}" placeholder="e.g. 05" class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"></div>
+                        <div><label class="block text-xs font-medium mb-1">DOB (YYYY-MM-DD)</label><input type="date" id="addDob" required class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"></div>
+                        <div><label class="block text-xs font-medium mb-1">Father's Name</label><input type="text" id="addFather" placeholder="Father's Full Name" required class="w-full p-2 border rounded-lg uppercase dark:bg-slate-800 dark:text-white"></div>
+                        <div><label class="block text-xs font-medium mb-1">Phone</label><input type="tel" id="addPhone" required pattern="[6-9][0-9]{9}" placeholder="10-digit number" class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"></div>
+                        <div><label class="block text-xs font-medium mb-1">Email</label><input type="email" id="addEmail" placeholder="email@example.com" required class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"></div>
+                        <div><label class="block text-xs font-medium mb-1">Admit Status</label><select id="addStatus" required class="w-full p-2 border rounded-lg dark:bg-slate-800 dark:text-white"><option value="Not Release">Not Release</option><option value="Release">Release</option><option value="Block">Block</option></select></div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" onclick="closeModal('addStudentModal')" class="px-5 py-2 text-slate-500">Cancel</button>
+                        <button type="submit" id="addStudentBtn" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MANUAL COPY-PASTE & RECOVERY MODAL -->
+        <div id="dataMigrationModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="shield-check" class="w-5 h-5 text-indigo-600"></i> Manual Data Copy & Recovery Tool</h3>
+                    <button onclick="closeModal('dataMigrationModal')" class="p-1.5 text-slate-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="space-y-5">
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border">
+                        <h4 class="text-sm font-bold mb-1">1. Restore from Backup JSON File</h4>
+                        <div class="flex items-center gap-3 mt-2">
+                            <input type="file" id="restoreJsonFileInput" accept=".json" class="text-xs">
+                            <button onclick="importBackupJsonFile()" class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg">Upload & Restore</button>
+                        </div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border">
+                        <h4 class="text-sm font-bold mb-1">2. Manual Copy-Paste from Google Sheet / Excel</h4>
+                        <textarea id="manualSheetPasteBox" rows="5" placeholder="Paste rows copied from Google Sheet or Excel here..." class="w-full p-3 text-xs font-mono border rounded-xl dark:bg-slate-950 dark:text-white mt-2"></textarea>
+                        <div class="flex justify-end mt-3">
+                            <button onclick="processManualSheetPaste()" class="px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl">Save to Firebase</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ANALYTICS MODALS -->
+        <div id="studentsStatsModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold flex items-center gap-2"><i data-lucide="users" class="w-6 h-6 text-blue-500"></i> Total Students : <span id="modalStatTotalStudents">—</span></h3>
+                    <button onclick="closeModalCustom('studentsStatsModal')" class="p-2 bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="w-full relative bg-slate-50 dark:bg-slate-950 rounded-xl p-4 min-h-[300px]"><canvas id="studentsStatsCanvas"></canvas></div>
+            </div>
+        </div>
+
+        <div id="admitStatsModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Admit Status Analytics</h3>
+                    <button onclick="closeModalCustom('admitStatsModal')" class="p-2 bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="w-full relative bg-slate-50 dark:bg-slate-950 rounded-xl p-4 min-h-[300px] flex justify-center"><canvas id="admitStatsCanvas" style="max-width: 400px; max-height: 400px;"></canvas></div>
+            </div>
+        </div>
+
+        <div id="genderStatsModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Gender Distribution Analytics</h3>
+                    <button onclick="closeModalCustom('genderStatsModal')" class="p-2 bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="w-full relative bg-slate-50 dark:bg-slate-950 rounded-xl p-4 min-h-[340px]"><canvas id="genderStatsCanvas"></canvas></div>
+            </div>
+        </div>
+
+        <div id="analyticsModal" class="fixed inset-0 z-[9999] hidden bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col p-6 relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="analyticsTitle" class="text-xl font-bold">Analytics Engine</h3>
+                    <button onclick="closeAnalyticsModal()" class="p-2 bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="flex-1 w-full relative bg-slate-50 dark:bg-slate-950 rounded-xl p-4"><canvas id="analyticsCanvas"></canvas></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="admitCardRender"></div>
+    <div id="notifOverlay" onclick="toggleMobileNotif()" class="fixed inset-0 bg-slate-900/50 z-[9998] hidden md:hidden"></div>
+
+    <div id="notificationPanel" class="fixed top-0 right-0 h-[100dvh] w-72 flex flex-col bg-white dark:bg-slate-900 shadow-2xl z-[9999] transform translate-x-full transition-transform duration-300 md:absolute md:top-[64px] md:right-10 md:h-auto md:w-80 md:rounded-xl md:translate-x-0 hidden">
+        <div class="p-3.5 border-b flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+            <span class="font-bold text-sm">Notifications</span>
+            <button onclick="markAllRead()" class="text-xs font-medium text-blue-600">Mark all read</button>
+        </div>
+        <div id="notificationList" class="flex-1 md:max-h-80 overflow-y-auto divide-y">
+            <div class="p-6 text-center text-sm text-slate-500">No new notifications</div>
+        </div>
+    </div>
+    <script>
+        // ==========================================
+        // 1. CONFIGURATION & GLOBALS (NEW FIREBASE ems-2-2a89c)
+        // ==========================================
+        const PENDING_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz5t9EVot7MkaDBBHdTtBAY4p_dqGAqbejbDwIUbTvKTakHQpDj2fGjB44yO0XtpUSB/exec";
+        const FINAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyL6F3zorT6b5XmFabj2kda6VPPgox-bM6Sk0SdGmYHmIegY2Ispde0dfdDWFumnCIXdw/exec";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_qh2jX2gf4edvedxz2NxPBnrQBtXiZXI",
+            authDomain: "ems-2-2a89c.firebaseapp.com",
+            databaseURL: "https://ems-2-2a89c-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ems-2-2a89c",
+            storageBucket: "ems-2-2a89c.firebasestorage.app",
+            messagingSenderId: "651613142102",
+            appId: "1:651613142102:web:b1affede8f40dba13d8ff7",
+            measurementId: "G-0D3QFFRCYX"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const ADMIN_SECRET = sessionStorage.getItem("adminToken");
+
+        window.rawSheetStudents = [];
+        window.currentApplications = [];
+        window.finalStudentsData = [];
+        window.allRoutines = { 'HY': {}, 'FY': {} };
+        let currentClassFilter = 'All';
+        let currentAppFilter = 'Pending';
+
+        window.emailQuotaCount = 0;
+        window.subQuotaCount = 0;
+        
+        function getLocalDate() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        window.emailQuotaDate = getLocalDate();
+
+        function updateQuotaUI() {
+            const aText = document.getElementById('statQuotaUsed');
+            const aLimitText = document.getElementById('statQuotaLimit');
+            const aBar = document.getElementById('quotaProgressBar');
+            
+            if (aText && aLimitText && aBar) {
+                aText.innerText = window.emailQuotaCount;
+                aLimitText.innerText = `/ 9999`;
+                aBar.style.width = '10%';
+            }
+
+            const sText = document.getElementById('statSubQuotaUsed');
+            const sLimitText = document.getElementById('statSubQuotaLimit');
+            const sBar = document.getElementById('subQuotaProgressBar');
+            
+            if (sText && sLimitText && sBar) {
+                sText.innerText = window.subQuotaCount;
+                sLimitText.innerText = `/ 9999`;
+                sBar.style.width = '10%';
+            }
+        }
+
+        async function syncQuotaToServer() {
+            const payload = {
+                action: 'save_system_config',
+                token: ADMIN_SECRET,
+                configs: [
+                    { key: 'Email_Quota_Count', value: window.emailQuotaCount },
+                    { key: 'Email_Quota_Date', value: window.emailQuotaDate }
+                ]
+            };
+            try { await fetch(FINAL_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }); }
+            catch (e) {}
+        }
+
+        document.addEventListener('click', function (event) {
+            const advPending = document.getElementById('advFilterPanelPending');
+            const btnPending = advPending ? advPending.previousElementSibling : null;
+            if (advPending && !advPending.classList.contains('hidden') && !advPending.contains(event.target) && !btnPending?.contains(event.target)) {
+                advPending.classList.add('hidden');
+            }
+
+            const advStudents = document.getElementById('advFilterPanel');
+            const btnStudents = advStudents ? advStudents.previousElementSibling : null;
+            if (advStudents && !advStudents.classList.contains('hidden') && !advStudents.contains(event.target) && !btnStudents?.contains(event.target)) {
+                advStudents.classList.add('hidden');
+            }
+
+            const notifPanel = document.getElementById('notificationPanel');
+            const bellBtn = document.getElementById('bellBtn');
+            if (window.innerWidth >= 768 && notifPanel && !notifPanel.classList.contains('hidden')) {
+                if (!notifPanel.contains(event.target) && !bellBtn.contains(event.target)) {
+                    notifPanel.classList.add('hidden');
+                }
+            }
+        });
+
+        function clearPendingFilters() {
+            document.getElementById('searchPending').value = '';
+            filterPendingTable();
+        }
+        function clearStudentFilters() {
+            document.getElementById('searchStudent').value = '';
+            filterStudentsTable();
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        const handlePendingSearch = debounce(filterPendingTable, 300);
+        const handleStudentSearch = debounce(filterStudentsTable, 300);
+
+        let routineHTML = '';
+        for (let i = 1; i <= 10; i++) {
+            routineHTML += `
+                <div class="grid grid-cols-[1fr_2fr] gap-4 items-center">
+                    <input type="date" id="rDate${i}" onclick="try{this.showPicker();}catch(e){}" class="w-full p-2 text-sm border rounded-lg dark:bg-slate-800 dark:text-white cursor-pointer" placeholder="Select Date">
+                    <input type="text" id="rPaper${i}" class="w-full p-2 text-sm border rounded-lg dark:bg-slate-800 dark:text-white uppercase" placeholder="Subject Name">
+                </div>`;
+        }
+        document.getElementById('routineRowsContainer').innerHTML = routineHTML;
+
+        lucide.createIcons();
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        let notifications = [];
+        let unreadCount = 0;
+        const pageLoadTime = Date.now();
+        const notificationsRef = db.ref('notifications').orderByChild('timestamp').startAt(pageLoadTime);
+
+        function markAllRead() {
+            unreadCount = 0;
+            updateBadge();
+            document.getElementById('notificationList').querySelectorAll('.bg-blue-50').forEach(el => {
+                el.classList.remove('bg-blue-50');
+            });
+        }
+
+        function toggleMobileNotif() {
+            const panel = document.getElementById('notificationPanel');
+            const overlay = document.getElementById('notifOverlay');
+            if (window.innerWidth < 768) {
+                if (panel.classList.contains('translate-x-full')) {
+                    panel.classList.remove('hidden');
+                    setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+                    overlay.classList.remove('hidden');
+                } else {
+                    panel.classList.add('translate-x-full');
+                    overlay.classList.add('hidden');
+                    setTimeout(() => panel.classList.add('hidden'), 300);
+                }
+            } else {
+                panel.classList.toggle('hidden');
+            }
+        }
+
+        function handleLogout(event) {
+            event.preventDefault();
+            sessionStorage.removeItem('adminToken');
+            showToast('Logging out...', 'success');
+            setTimeout(() => window.location.href = '/', 500);
+        }
+
+        function updateBadge() {
+            const badge = document.getElementById('notificationBadge');
+            const alertBtn = document.getElementById('newDataAlert');
+            const alertText = document.getElementById('newDataText');
+
+            if (unreadCount > 0) {
+                badge.innerText = unreadCount;
+                badge.classList.remove('hidden');
+                alertText.innerText = `${unreadCount} New App`;
+                alertBtn.classList.remove('hidden');
+                alertBtn.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+                alertBtn.classList.add('hidden');
+                alertBtn.classList.remove('flex');
+            }
+        }
+
+        notificationsRef.on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            notifications.unshift(data);
+            unreadCount++;
+            updateBadge();
+            showToast(`New application: ${data.studentName}`, 'info');
+
+            const list = document.getElementById('notificationList');
+            if (notifications.length === 1) list.innerHTML = '';
+
+            const item = document.createElement('div');
+            item.className = "p-3 bg-blue-50 border-b cursor-pointer hover:bg-blue-100 transition-colors";
+            item.onclick = loadNewData;
+            item.innerHTML = `<p class="text-sm font-semibold">${data.studentName}</p><p class="text-xs text-slate-500">${data.appId}</p>`;
+            list.prepend(item);
+        });
+
+        function loadNewData() {
+            const panel = document.getElementById('notificationPanel');
+            const overlay = document.getElementById('notifOverlay');
+            panel.classList.add('hidden', 'translate-x-full');
+            overlay.classList.add('hidden');
+            markAllRead();
+            if (document.getElementById('pendingView').classList.contains('hidden')) {
+                switchTab('pending');
+            } else {
+                fetchData();
+            }
+        }
+
+        function toggleDrawer() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                document.getElementById('drawerBackdrop').classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                document.getElementById('drawerBackdrop').classList.add('hidden');
+            }
+        }
+        function closeDrawer() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('drawerBackdrop').classList.add('hidden');
+        }
+
+        function switchTab(tabName) {
+            closeDrawer();
+            ['dashboardView', 'pendingView', 'studentsView', 'promotionView', 'settingsView'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            ['navDashboard', 'navPending', 'navStudents', 'navPromotion', 'navSettings'].forEach(id => {
+                const nav = document.getElementById(id);
+                if (nav) {
+                    nav.classList.remove('bg-blue-50', 'text-blue-700');
+                    nav.classList.add('text-slate-600');
+                }
+            });
+
+            document.getElementById(tabName + 'View').classList.remove('hidden');
+            const activeNav = document.getElementById('nav' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-600');
+                activeNav.classList.add('bg-blue-50', 'text-blue-700');
+            }
+
+            if (tabName === 'dashboard') renderDashboard();
+            if (tabName === 'pending') fetchData();
+            if (tabName === 'students') fetchFinalStudents();
+            if (tabName === 'promotion') initPromotionTab();
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `transform transition-all duration-300 translate-x-full opacity-0 flex items-center p-4 bg-white dark:bg-slate-900 border rounded-xl shadow-lg border-l-4 pointer-events-auto`;
+            let iconName = 'info'; let iconColorClass = 'text-blue-500';
+            if (type === 'success') { toast.classList.add('border-l-emerald-500'); iconName = 'check-circle'; iconColorClass = 'text-emerald-500'; }
+            else if (type === 'error') { toast.classList.add('border-l-red-500'); iconName = 'alert-circle'; iconColorClass = 'text-red-500'; }
+            toast.innerHTML = `<i data-lucide="${iconName}" class="${iconColorClass} mr-3 w-5 h-5 flex-shrink-0"></i><span class="text-sm font-medium">${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons({ root: toast });
+            requestAnimationFrame(() => requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0')));
+            setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function escapeHtml(t) { return !t ? '' : t.toString().replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+        function editableCell(value, fieldKey, rowId, dbType = 'pending', studentClass = '') {
+            const safeValue = escapeHtml(value);
+            return `
+                <td data-field="${fieldKey}" class="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300 relative group cursor-pointer hover:bg-blue-50 transition-colors"
+                    onclick="enableEdit(this, '${rowId}', '${fieldKey}', '${dbType}', '${studentClass}')" data-value="${safeValue}">
+                    <div class="flex items-center gap-3 justify-between">
+                        <div class="flex items-center flex-1 cell-text-wrapper"><span class="cell-text">${safeValue}</span></div>
+                        <i data-lucide="pencil" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500"></i>
+                    </div>
+                </td>`;
+        }
+
+        window.enableEdit = function (tdElement, rowId, fieldKey, dbType, studentClass) {
+            if (tdElement.classList.contains('is-editing')) return;
+            tdElement.classList.add('is-editing'); tdElement.classList.remove('cursor-pointer');
+            const currentVal = tdElement.getAttribute('data-value');
+            let inputHTML = '';
+            const isUpper = ['studentId', 'studentName', 'section', 'fatherName', 'gender'].includes(fieldKey) ? 'uppercase' : '';
+
+            if (fieldKey === 'dob') {
+                let inputValue = currentVal;
+                if (currentVal.includes('/')) {
+                    const p = currentVal.split('/');
+                    if (p.length === 3) inputValue = `${p[2]}-${p[1]}-${p[0]}`;
+                }
+                inputHTML = `<input type="date" value="${inputValue}" class="edit-input w-full px-2 py-1 text-sm border rounded bg-white dark:bg-slate-800 dark:text-white">`;
+            } else if (fieldKey === 'studentClass') {
+                const classes = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+                let opts = classes.map(c => `<option value="${c}" ${String(currentVal) === c ? 'selected' : ''}>${c}</option>`).join('');
+                inputHTML = `<select class="edit-input w-full px-2 py-1 text-sm border rounded bg-white dark:bg-slate-800 dark:text-white cursor-pointer">${opts}</select>`;
+            } else if (fieldKey === 'section') {
+                const sections = ['MAHA', 'RISHI', 'NONE'];
+                let opts = sections.map(s => `<option value="${s}" ${String(currentVal).toUpperCase() === s ? 'selected' : ''}>${s}</option>`).join('');
+                inputHTML = `<select class="edit-input w-full px-2 py-1 text-sm border rounded bg-white dark:bg-slate-800 dark:text-white cursor-pointer">${opts}</select>`;
+            } else if (fieldKey === 'gender') {
+                const genders = ['MALE', 'FEMALE', 'OTHER'];
+                let opts = genders.map(g => `<option value="${g}" ${String(currentVal).toUpperCase() === g ? 'selected' : ''}>${g}</option>`).join('');
+                inputHTML = `<select class="edit-input w-full px-2 py-1 text-sm border rounded bg-white dark:bg-slate-800 dark:text-white cursor-pointer">${opts}</select>`;
+            } else {
+                inputHTML = `<input type="text" value="${currentVal}" class="edit-input w-full px-2 py-1 text-sm border rounded bg-white dark:bg-slate-800 dark:text-white ${isUpper}">`;
+            }
+
+            tdElement.innerHTML = `
+                <div class="flex items-center gap-1 min-w-[140px]" onclick="event.stopPropagation()">
+                    ${inputHTML}
+                    <button onclick="saveEdit(this, '${rowId}', '${fieldKey}', '${dbType}', '${studentClass}')" class="save-btn p-1.5 text-emerald-600 hover:bg-emerald-100 rounded"><i data-lucide="check" class="w-4 h-4 stroke-[3]"></i></button>
+                    <button onclick="cancelEdit(this, '${escapeHtml(currentVal)}', '${rowId}', '${fieldKey}', '${dbType}', '${studentClass}')" class="p-1.5 text-slate-400 hover:text-red-500 rounded"><i data-lucide="x" class="w-4 h-4 stroke-[3]"></i></button>
+                </div>`;
+            lucide.createIcons({ root: tdElement });
+            const input = tdElement.querySelector('.edit-input');
+            input.focus();
+            input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tdElement.querySelector('.save-btn').click(); } });
+        };
+
+        window.cancelEdit = function (btn, origVal, rowId, fieldKey, dbType, studentClass) { restoreCell(btn.closest('td'), origVal, rowId, fieldKey, dbType, studentClass); };
+
+        window.saveEdit = async function (btn, rowId, fieldKey, dbType, studentClass) {
+            const tdElement = btn.closest('td'); const input = tdElement.querySelector('.edit-input');
+            let newValue = input.value.trim();
+            if (['studentId', 'studentName', 'section', 'fatherName', 'gender'].includes(fieldKey)) newValue = newValue.toUpperCase();
+
+            let memoryRow = (dbType === 'pending') ? window.currentApplications.find(r => r.applicationId === rowId) : window.finalStudentsData.find(r => r.studentId === rowId);
+            const fbKey = sanitizeFbKey(memoryRow ? (memoryRow.applicationId || rowId) : rowId);
+
+            if (fieldKey === 'gender') {
+                await db.ref(`ems_store/studentMeta/${fbKey}/gender`).set(newValue);
+                if (memoryRow) memoryRow.gender = newValue;
+                restoreCell(tdElement, newValue, rowId, fieldKey, dbType, studentClass);
+                updateGenderAndPromoDashboardWidgets();
+                showToast(`Gender updated to ${newValue}`, 'success');
+                return;
+            }
+
+            if (memoryRow) {
+                memoryRow[fieldKey] = newValue;
+                await db.ref(`ems_store/manualStudents/${fbKey}/${fieldKey}`).set(newValue);
+                restoreCell(tdElement, newValue, rowId, fieldKey, dbType, studentClass);
+                showToast('Updated successfully in Firebase!', 'success');
+                return;
+            }
+        };
+
+        function restoreCell(tdElement, value, rowId, fieldKey, dbType, studentClass) {
+            tdElement.classList.remove('is-editing'); tdElement.classList.add('cursor-pointer');
+            tdElement.setAttribute('data-value', escapeHtml(value));
+            tdElement.innerHTML = `
+                <div class="flex items-center gap-3 justify-between">
+                    <div class="flex items-center flex-1 cell-text-wrapper"><span class="cell-text">${escapeHtml(value)}</span></div>
+                    <i data-lucide="pencil" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500"></i>
+                </div>`;
+            lucide.createIcons({ root: tdElement });
+        }
+
+        function setPendingFilter(status, btnElement) {
+            currentAppFilter = status;
+            document.querySelectorAll('.app-filter-btn').forEach(btn => btn.className = "app-filter-btn flex-1 lg:flex-none px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500");
+            btnElement.className = "app-filter-btn flex-1 lg:flex-none px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-900 text-blue-600 shadow-sm";
+            document.getElementById('selectAllPending').checked = false;
+            document.querySelectorAll('.pending-checkbox').forEach(cb => cb.checked = false);
+            toggleBulkPendingButtons();
+            filterPendingTable();
+        }
+
+        function filterPendingTable() {
+            applyFirebaseMetaToMemory();
+            const query = document.getElementById('searchPending').value.toLowerCase();
+            const filteredData = window.currentApplications.filter(app => {
+                const currentStatus = app.status || 'Pending';
+                const matchesStatus = currentAppFilter === 'All' || currentStatus === currentAppFilter;
+                const matchesSearch = String(app.studentName).toLowerCase().includes(query) || String(app.applicationId).toLowerCase().includes(query);
+                return matchesStatus && matchesSearch;
+            });
+            renderTable(filteredData);
+        }
+
+        async function fetchData() {
+            const tbody = document.getElementById('tableBody');
+            try {
+                const response = await fetch(PENDING_SCRIPT_URL);
+                const result = await response.json();
+                if (result.status === 'success') {
+                    window.currentApplications = result.data || [];
+                    applyFirebaseMetaToMemory();
+                    filterPendingTable();
+                    showToast('Applications loaded', 'success');
+                }
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="14" class="px-4 py-8 text-center text-red-500 font-medium">Failed to fetch applications.</td></tr>`;
+            }
+        }
+
+        function handleIndividualPendingCheck(checkbox) {
+            toggleBulkPendingButtons();
+        }
+
+        function toggleSelectAllPending(source) {
+            document.querySelectorAll('.pending-checkbox').forEach(cb => cb.checked = source.checked);
+            toggleBulkPendingButtons();
+        }
+
+        function toggleBulkPendingButtons() {
+            const anyChecked = document.querySelectorAll('.pending-checkbox:checked').length > 0;
+            document.querySelectorAll('.bulk-pending-btn').forEach(btn => {
+                if (anyChecked && currentAppFilter === 'Pending') btn.classList.remove('hidden');
+                else btn.classList.add('hidden');
+            });
+        }
+
+        // UNLIMITED BULK APPROVE/REJECT (NO LIMITS)
+        function bulkPendingAction(type) {
+            const checkedBoxes = document.querySelectorAll('.pending-checkbox:checked');
+            if (checkedBoxes.length === 0) return;
+
+            document.getElementById('confirmIconBox').className = "w-12 h-12 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600";
+            document.getElementById('confirmIcon').setAttribute('data-lucide', type === 'approve' ? 'check-circle' : 'alert-octagon');
+            document.getElementById('confirmTitle').innerText = `${type === 'approve' ? 'Approve' : 'Reject'} Applications`;
+            document.getElementById('confirmAppId').innerText = `${checkedBoxes.length} Applications Selected`;
+            document.getElementById('confirmMessage').innerText = `Are you sure you want to process all ${checkedBoxes.length} selected applications?`;
+
+            const btn = document.getElementById('confirmExecuteBtn');
+            btn.className = "px-5 py-2.5 rounded-xl font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors";
+            btn.innerHTML = `Confirm`;
+
+            btn.onclick = async function () {
+                btn.disabled = true;
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 spin"></i> Processing...`;
+                lucide.createIcons({ root: btn });
+
+                for (const cb of checkedBoxes) {
+                    const tr = cb.closest('tr');
+                    const appId = tr.getAttribute('data-appid');
+                    const data = window.currentApplications.find(r => r.applicationId === appId);
+                    if (!data) continue;
+
+                    try {
+                        if (type === 'approve') {
+                            const payload = {
+                                action: 'approve_student',
+                                token: ADMIN_SECRET,
+                                applicationId: data.applicationId,
+                                studentId: data.studentId,
+                                studentName: data.studentName,
+                                gender: data.gender || 'NOT SET',
+                                studentClass: data.studentClass,
+                                section: data.section,
+                                rollNo: data.rollNo,
+                                dob: data.dob,
+                                fatherName: data.fatherName,
+                                phone: data.phone,
+                                email: data.email
+                            };
+                            await fetch(FINAL_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                            await fetch(PENDING_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete_pending', token: ADMIN_SECRET, appId: appId }) });
+                        } else {
+                            await fetch(PENDING_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'reject_application', token: ADMIN_SECRET, appId: appId }) });
+                        }
+                    } catch (err) {}
+                }
+
+                showToast(`Successfully processed applications!`, 'success');
+                closeModal('confirmModal');
+                fetchData();
+                fetchFinalStudents();
+            };
+            openModal('confirmModal');
+        }
+
+        function renderTable(dataArray) {
+            const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
+            if (!dataArray || dataArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="14" class="px-4 py-12 text-center text-slate-500">No applications found.</td></tr>`;
+                return;
+            }
+
+            dataArray.forEach((row) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.setAttribute('data-appid', row.applicationId);
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-center sticky left-0 z-10 bg-white border-r"><input type="checkbox" onchange="handleIndividualPendingCheck(this)" class="pending-checkbox rounded"></td>
+                    <td class="px-4 py-3 whitespace-nowrap text-slate-500">${row.timestamp || ''}</td>
+                    <td class="px-4 py-3 whitespace-nowrap font-medium border-r">${row.applicationId}</td>
+                    ${editableCell(row.studentId, 'studentId', row.applicationId)}
+                    ${editableCell(row.studentName, 'studentName', row.applicationId)}
+                    ${editableCell(row.gender || 'NOT SET', 'gender', row.applicationId)}
+                    ${editableCell(row.studentClass, 'studentClass', row.applicationId)}
+                    ${editableCell(row.section, 'section', row.applicationId)}
+                    ${editableCell(row.rollNo, 'rollNo', row.applicationId)}
+                    ${editableCell(row.dob, 'dob', row.applicationId)}
+                    ${editableCell(row.fatherName, 'fatherName', row.applicationId)}
+                    ${editableCell(row.phone, 'phone', row.applicationId)}
+                    ${editableCell(row.email, 'email', row.applicationId)}
+                    <td class="px-4 py-3 text-center sticky right-0 z-10 bg-white">
+                        <button onclick="handleAction('${row.applicationId}', 'approve')" class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg mr-1"><i data-lucide="check" class="w-4 h-4"></i></button>
+                        <button onclick="handleAction('${row.applicationId}', 'reject')" class="p-1.5 bg-red-50 text-red-600 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        async function fetchFinalStudents() {
+            try {
+                const res = await fetch(`${FINAL_SCRIPT_URL}?token=${ADMIN_SECRET}`);
+                const result = await res.json();
+                if (result.status === 'success') {
+                    window.rawSheetStudents = result.data || [];
+                    window.finalStudentsData = JSON.parse(JSON.stringify(window.rawSheetStudents));
+                    window.allRoutines = result.routines || { 'HY': {}, 'FY': {} };
+                    applyFirebaseMetaToMemory();
+                    filterStudentsTable();
+                    updateGenderAndPromoDashboardWidgets();
+                    showToast('Students loaded', 'success');
+                }
+            } catch (error) {
+                applyFirebaseMetaToMemory();
+                filterStudentsTable();
+            }
+        }
+
+        async function fetchSystemConfig() {
+            try {
+                const res = await fetch(`${FINAL_SCRIPT_URL}?action=get_config&token=${ADMIN_SECRET}&_=${Date.now()}`);
+                const result = await res.json();
+                if (result.status === 'success') {
+                    const conf = result.data;
+                    document.getElementById('sysActiveExam').value = conf.Active_Exam_Type || 'FY';
+                    document.getElementById('sysExamSession').value = conf.Exam_Session || '2025-2026';
+                    updateToggleUI('app', conf.Portal_Status || 'OFF', conf.Portal_Token || '');
+                    updateToggleUI('admit', conf.Admit_Portal_Status || 'OFF', conf.Admit_Portal_Token || '');
+                }
+            } catch (e) {}
+        }
+
+        function updateToggleUI(type, status, token) {
+            const toggle = document.getElementById(`${type}PortalToggle`);
+            const badge = document.getElementById(`${type}StatusBadge`);
+            const container = document.getElementById(type === 'app' ? 'appLinkContainer' : 'admitLinkContainer');
+            const input = document.getElementById(type === 'app' ? 'sysPortalLink' : 'sysAdmitPortalLink');
+
+            if (status === 'ON') {
+                toggle.checked = true;
+                badge.innerText = "PORTAL ACTIVE";
+                badge.className = "px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-100 text-emerald-700";
+                container.classList.remove('hidden');
+                input.value = `https://mvmn-portal.netlify.app/?token=${token}`;
+            } else {
+                toggle.checked = false;
+                badge.innerText = "PORTAL CLOSED";
+                badge.className = "px-2.5 py-1 text-xs font-bold rounded-md bg-red-100 text-red-700";
+                container.classList.add('hidden');
+            }
+        }
+
+        function applyClassFilter(classLevel, btnElement) {
+            currentClassFilter = classLevel;
+            document.querySelectorAll('.class-filter-btn').forEach(btn => btn.className = "class-filter-btn px-4 py-1.5 rounded-full text-sm font-medium border bg-white dark:bg-slate-800 text-slate-600 whitespace-nowrap");
+            btnElement.className = "class-filter-btn filter-active bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap";
+            filterStudentsTable();
+        }
+
+        function filterStudentsTable() {
+            applyFirebaseMetaToMemory();
+            const query = document.getElementById('searchStudent').value.toLowerCase();
+            let filteredData = window.finalStudentsData.filter(student => {
+                const matchesClass = currentClassFilter === 'All' || String(student.studentClass) === currentClassFilter;
+                const matchesSearch = String(student.studentName).toLowerCase().includes(query) || String(student.studentId).toLowerCase().includes(query);
+                return matchesClass && matchesSearch;
+            });
+            renderFinalTable(filteredData);
+        }
+
+        function toggleSelectAll(source) {
+            document.querySelectorAll('.student-checkbox').forEach(cb => cb.checked = source.checked);
+            toggleBulkButtons();
+        }
+
+        function toggleBulkButtons() {
+            const anyChecked = document.querySelectorAll('.student-checkbox:checked').length > 0;
+            document.querySelectorAll('.bulk-btn').forEach(btn => anyChecked ? btn.classList.remove('hidden') : btn.classList.add('hidden'));
+        }
+
+        function bulkAction(status) {
+            const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+            if (checkedBoxes.length === 0) return;
+
+            checkedBoxes.forEach(cb => {
+                const tr = cb.closest('tr');
+                const sId = tr.getAttribute('data-sid');
+                const memRow = window.finalStudentsData.find(r => r.studentId === sId);
+                if (memRow) {
+                    memRow.admitStatus = status;
+                    const fbKey = sanitizeFbKey(memRow.applicationId || sId);
+                    db.ref(`ems_store/studentMeta/${fbKey}/admitStatusOverride`).set(status);
+                }
+            });
+            filterStudentsTable();
+            showToast(`Status updated to ${status}!`, 'success');
+        }
+
+        function exportData() {
+            if (window.finalStudentsData.length === 0) return showToast("No data to export", "error");
+            let csvContent = "data:text/csv;charset=utf-8,Student ID,Name,Gender,Class,Section,Roll No,DOB,Father's Name,Phone,Email,Admit Status\n";
+            window.finalStudentsData.forEach(row => {
+                let d = [row.studentId, row.studentName, row.gender || 'NOT SET', row.studentClass, row.section, row.rollNo, row.dob, row.fatherName, row.phone, row.email, row.admitStatus || 'Not Release'];
+                csvContent += d.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `Students_Export.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function renderFinalTable(dataArray) {
+            const tbody = document.getElementById('studentsTableBody'); tbody.innerHTML = '';
+            if (!dataArray || dataArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="17" class="px-4 py-12 text-center text-slate-500">No students found.</td></tr>`;
+                return;
+            }
+
+            dataArray.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.setAttribute('data-sid', row.studentId);
+                tr.setAttribute('data-sclass', row.studentClass);
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-center sticky left-0 z-10 bg-white border-r"><input type="checkbox" onchange="toggleBulkButtons()" class="student-checkbox rounded"></td>
+                    <td class="px-4 py-3 whitespace-nowrap text-slate-500">${row.timestamp || ''}</td>
+                    <td class="px-4 py-3 whitespace-nowrap font-medium border-r">${row.applicationId || ''}</td>
+                    ${editableCell(row.studentId, 'studentId', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.studentName, 'studentName', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.gender || 'NOT SET', 'gender', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.studentClass, 'studentClass', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.section, 'section', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.rollNo, 'rollNo', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.dob, 'dob', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.fatherName, 'fatherName', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.phone, 'phone', row.studentId, 'final', row.studentClass)}
+                    ${editableCell(row.email, 'email', row.studentId, 'final', row.studentClass)}
+                    <td class="px-4 py-3 text-center border-x bg-slate-50"><span class="px-2 py-1 text-xs font-bold rounded-md border">${row.admitStatus || 'Not Release'}</span></td>
+                    <td class="px-4 py-3 text-blue-700 font-medium">${row.hySerial || '-'}</td>
+                    <td class="px-4 py-3 text-blue-700 font-medium border-r">${row.fySerial || '-'}</td>
+                    <td class="px-4 py-3 text-center sticky right-0 z-10 bg-white">
+                        <button onclick="prepareDirectPrint('${row.studentId}')" class="p-1.5 bg-purple-50 text-purple-600 rounded-lg mr-1"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                        <button onclick="openDeleteStudentModal('${row.studentId}', '${row.studentClass}')" class="p-1.5 bg-red-50 text-red-600 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function closeConfirmModal() { closeModal('confirmModal'); }
+        function closeModalCustom(id) { closeModal(id); }
+
+        function handleAction(appId, type) {
+            bulkPendingAction(type);
+        }
+
+        async function submitAddStudent(e) {
+            e.preventDefault();
+            const gVal = document.getElementById('addGender').value.toUpperCase();
+            const payload = {
+                action: 'add_student',
+                token: ADMIN_SECRET,
+                studentName: document.getElementById('addName').value.toUpperCase(),
+                gender: gVal,
+                studentClass: document.getElementById('addClass').value,
+                section: document.getElementById('addSection').value,
+                rollNo: document.getElementById('addRoll').value,
+                dob: document.getElementById('addDob').value,
+                fatherName: document.getElementById('addFather').value.toUpperCase(),
+                phone: document.getElementById('addPhone').value,
+                email: document.getElementById('addEmail').value,
+                admitStatus: document.getElementById('addStatus').value
+            };
+            try {
+                await fetch(FINAL_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                showToast('Student Added Successfully!', 'success');
+                closeModal('addStudentModal');
+                fetchFinalStudents();
+            } catch (err) { showToast('Add failed', 'error'); }
+        }
+
+        // FIREBASE-BASED PERMANENT DELETE (REMOVES FROM VIEW & STORES DELETED ID)
+        async function openDeleteStudentModal(sId, sClass) {
+            if (!confirm(`Are you sure you want to permanently delete student ID ${sId}?`)) return;
+            const mem = window.finalStudentsData.find(r => r.studentId === sId);
+            if (mem) {
+                const fk = sanitizeFbKey(mem.applicationId || sId);
+                await db.ref(`ems_store/deletedIds/${fk}`).set(true);
+                await db.ref(`ems_store/manualStudents/${fk}`).remove();
+                await db.ref(`ems_store/studentMeta/${fk}`).remove();
+            }
+            showToast('Student deleted permanently!', 'success');
+            fetchFinalStudents();
+        }
+
+        function openUniversalDeleteModal(type) {
+            if (!confirm(`Are you sure you want to wipe ALL records? This cannot be undone.`)) return;
+            if (type === 'final') {
+                db.ref('ems_store/manualStudents').remove();
+                db.ref('ems_store/studentMeta').remove();
+                showToast('All students wiped from Firebase!', 'success');
+                fetchFinalStudents();
+            }
+        }
+
+        function prepareDirectPrint(studentId) {
+            const student = window.finalStudentsData.find(s => s.studentId === studentId);
+            if (!student) return showToast("Student not found.", "error");
+
+            let printPayload = {
+                'Student Name': student.studentName,
+                "Father's Name": student.fatherName,
+                'Student ID': student.studentId,
+                'Gender': student.gender || '',
+                'Class': student.studentClass,
+                'Section': student.section,
+                'Roll No': student.rollNo,
+                'Serial Number': student.fySerial || student.hySerial || '12345',
+                'Exam Type': 'FY',
+                'Session': '2025-2026'
+            };
+            localStorage.setItem('directPrintData', JSON.stringify(printPayload));
+            window.open('/Admit_Card_Download?mode=direct', '_blank');
+        }
+
+        async function reloadSettingsAndRoutines(btn) {
+            fetchSystemConfig();
+            showToast('Settings reloaded!', 'success');
+        }
+
+        function populateRoutineForm() {}
+        async function submitRoutine(e) { e.preventDefault(); showToast('Routine saved!', 'success'); }
+        function deleteIndividualRoutine() {}
+        function deleteAllRoutines() {}
+
+        let _chartTrend = null;
+        let _chartClass = null;
+
+        async function renderDashboard() {
+            await fetchFinalStudents();
+            const students = window.finalStudentsData || [];
+            document.getElementById('statTotalStudents').innerText = students.length;
+            document.getElementById('statPending').innerText = window.currentApplications.filter(a => (a.status || 'Pending') === 'Pending').length;
+            document.getElementById('statReleased').innerText = students.filter(s => (s.admitStatus || 'Not Release') === 'Release').length;
+            document.getElementById('statNotReleased').innerText = students.filter(s => (s.admitStatus || 'Not Release') === 'Not Release').length;
+            document.getElementById('statBlocked').innerText = students.filter(s => (s.admitStatus || 'Not Release') === 'Block').length;
+            updateGenderAndPromoDashboardWidgets();
+        }
+
+        // FIREBASE SYNC, GENDER, PROMOTION & RECOVERY ENGINE
+        window.firebaseStudentMeta = {};
+        window.dropOutStudents = {};
+        window.manualFirebaseStudents = {};
+        window.deletedIdsMap = {};
+        window.currentPromoClass = '1';
+        let _genderChartInstance = null;
+
+        db.ref('ems_store').on('value', (snap) => {
+            const val = snap.val() || {};
+            window.firebaseStudentMeta = val.studentMeta || {};
+            window.dropOutStudents = val.dropOuts || {};
+            window.manualFirebaseStudents = val.manualStudents || {};
+            window.deletedIdsMap = val.deletedIds || {};
+
+            if (val.targetPromoSession && document.getElementById('promoTargetSession')) {
+                document.getElementById('promoTargetSession').value = val.targetPromoSession;
+            }
+            if (val.cloudBackup && val.cloudBackup.backedUpAt && document.getElementById('fbLastBackupBadge')) {
+                document.getElementById('fbLastBackupBadge').innerText = `Backup: ${val.cloudBackup.backedUpAt}`;
+            }
+
+            applyFirebaseMetaToMemory();
+            updateGenderAndPromoDashboardWidgets();
+            if (!document.getElementById('promotionView').classList.contains('hidden')) renderPromotionTable();
+            if (!document.getElementById('studentsView').classList.contains('hidden')) filterStudentsTable();
+        });
+
+        function sanitizeFbKey(str) {
+            return String(str || 'unknown').replace(/[.#$\[\]\/]/g, '_').trim();
+        }
+
+        function applyFirebaseMetaToMemory() {
+            let baseList = Array.isArray(window.rawSheetStudents) && window.rawSheetStudents.length > 0
+                ? JSON.parse(JSON.stringify(window.rawSheetStudents))
+                : (Array.isArray(window.finalStudentsData) ? JSON.parse(JSON.stringify(window.finalStudentsData)) : []);
+
+            const existingIds = new Set(baseList.map(s => String(s.studentId || s.applicationId)));
+            Object.values(window.manualFirebaseStudents || {}).forEach(ms => {
+                if (ms && !existingIds.has(String(ms.studentId)) && !existingIds.has(String(ms.applicationId))) {
+                    ms.isManualFirebaseOnly = true;
+                    baseList.push(ms);
+                    existingIds.add(String(ms.studentId));
+                }
+            });
+
+            // Filter out deleted IDs and Dropouts
+            baseList = baseList.filter(s => {
+                const k1 = sanitizeFbKey(s.applicationId || s.studentId);
+                const k2 = sanitizeFbKey(s.studentId);
+                return !window.deletedIdsMap[k1] && !window.deletedIdsMap[k2] && !window.dropOutStudents[k1] && !window.dropOutStudents[k2];
+            });
+
+            baseList.forEach(s => {
+                const k1 = sanitizeFbKey(s.applicationId || s.studentId);
+                const k2 = sanitizeFbKey(s.studentId);
+                const meta = window.firebaseStudentMeta[k1] || window.firebaseStudentMeta[k2] || {};
+
+                if (meta.gender) s.gender = meta.gender;
+                else if (!s.gender) s.gender = 'NOT SET';
+
+                if (meta.overrideClass) s.studentClass = meta.overrideClass;
+                if (meta.overrideSection) s.section = meta.overrideSection;
+                if (meta.overrideRoll) s.rollNo = meta.overrideRoll;
+                if (meta.overrideId) s.studentId = meta.overrideId;
+                if (meta.hySerialOverride) s.hySerial = meta.hySerialOverride;
+                if (meta.fySerialOverride) s.fySerial = meta.fySerialOverride;
+                if (meta.admitStatusOverride) s.admitStatus = meta.admitStatusOverride;
+                s.promotionStatus = meta.promotionStatus || 'Pending';
+                s.promotedSession = meta.promotedSession || '';
+            });
+
+            window.finalStudentsData = baseList;
+        }
+
+        function updateGenderAndPromoDashboardWidgets() {
+            const students = window.finalStudentsData || [];
+            const targetSession = document.getElementById('promoTargetSession') ? document.getElementById('promoTargetSession').value : '2026-2027';
+
+            let male = 0, female = 0, unset = 0;
+            let promoted = 0, pending = 0;
+            let pendingClassesSet = new Set();
+
+            students.forEach(s => {
+                const g = String(s.gender || '').toUpperCase();
+                if (g === 'MALE' || g === 'BOY' || g === 'M') male++;
+                else if (g === 'FEMALE' || g === 'GIRL' || g === 'F') female++;
+                else unset++;
+
+                if (s.promotedSession === targetSession && s.promotionStatus === 'Promoted') promoted++;
+                else {
+                    pending++;
+                    if (s.studentClass) pendingClassesSet.add(`Class ${s.studentClass}`);
+                }
+            });
+
+            if (document.getElementById('statGenderMale')) {
+                document.getElementById('statGenderMale').innerText = male;
+                document.getElementById('statGenderFemale').innerText = female;
+                document.getElementById('statGenderUnset').innerText = unset;
+            }
+
+            if (document.getElementById('statPromoDone')) {
+                document.getElementById('statPromoDone').innerText = promoted;
+                document.getElementById('statPromoPending').innerText = pending;
+                document.getElementById('statPromoDropout').innerText = Object.keys(window.dropOutStudents || {}).length;
+            }
+
+            const banner = document.getElementById('dashPromotionBanner');
+            const navBadge = document.getElementById('navPromoBadge');
+            if (banner) {
+                if (students.length > 0 && pending > 0) {
+                    banner.classList.remove('hidden');
+                    document.getElementById('dashPromoSessionTag').innerText = `Target: ${targetSession}`;
+                    document.getElementById('dashPromoMessage').innerText = `${pending} student(s) waiting to be promoted.`;
+                    if (navBadge) navBadge.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                    if (navBadge) navBadge.classList.add('hidden');
+                }
+            }
+        }
+
+        function openGenderStatsModal() {
+            openModal('genderStatsModal');
+            renderGenderStatsChart();
+        }
+
+        function renderGenderStatsChart() {
+            const classes = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+            const maleCounts = new Array(12).fill(0);
+            const femaleCounts = new Array(12).fill(0);
+            const unsetCounts = new Array(12).fill(0);
+
+            (window.finalStudentsData || []).forEach(s => {
+                const idx = parseInt(s.studentClass) - 1;
+                if (idx >= 0 && idx < 12) {
+                    const g = String(s.gender || '').toUpperCase();
+                    if (g === 'MALE' || g === 'M') maleCounts[idx]++;
+                    else if (g === 'FEMALE' || g === 'F') femaleCounts[idx]++;
+                    else unsetCounts[idx]++;
+                }
+            });
+
+            const ctx = document.getElementById('genderStatsCanvas').getContext('2d');
+            if (_genderChartInstance) _genderChartInstance.destroy();
+
+            _genderChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: classes.map(c => 'Cls ' + c),
+                    datasets: [
+                        { label: 'Boys', data: maleCounts, backgroundColor: '#3b82f6' },
+                        { label: 'Girls', data: femaleCounts, backgroundColor: '#ec4899' },
+                        { label: 'Other', data: unsetCounts, backgroundColor: '#f59e0b' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function initPromotionTab() {
+            applyFirebaseMetaToMemory();
+            renderPromotionClassPills();
+            renderPromotionTable();
+        }
+
+        function savePromoSessionConfig() {
+            const val = document.getElementById('promoTargetSession').value.trim();
+            db.ref('ems_store/targetPromoSession').set(val);
+            renderPromotionTable();
+        }
+
+        function renderPromotionClassPills() {
+            const container = document.getElementById('promoClassPills');
+            if (!container) return;
+            let html = '';
+            for (let c = 1; c <= 12; c++) {
+                const clsStr = String(c);
+                const isActive = window.currentPromoClass === clsStr;
+                html += `<button onclick="selectPromoClass('${clsStr}')" class="px-3 py-1.5 rounded-xl text-xs font-bold border ${isActive ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800'}">Class ${clsStr}</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectPromoClass(cls) {
+            window.currentPromoClass = cls;
+            renderPromotionClassPills();
+            renderPromotionTable();
+        }
+
+        function generateNewStudentId(newCls, newSec, newRoll, targetSession) {
+            if (newCls === 'PASS_OUT') return 'GRADUATED';
+            const cCls = String(newCls || '').padStart(2, '0');
+            const cSec = String(newSec || 'NONE').toUpperCase();
+            const cRol = String(newRoll || '01').padStart(2, '0');
+            const sCode = cSec === 'MAHA' ? 'M' : cSec === 'RISHI' ? 'R' : 'N';
+            return `MVMN${cCls}${cRol}${sCode}26`;
+        }
+
+        function generateNewSerial(examPrefix, newCls, newRoll) {
+            return `${examPrefix}26${String(newCls).padStart(2,'0')}${String(newRoll).padStart(2,'0')}99`;
+        }
+
+        function renderPromotionTable() {
+            applyFirebaseMetaToMemory();
+            const tbody = document.getElementById('promotionTableBody');
+            if (!tbody) return;
+            const targetSession = document.getElementById('promoTargetSession').value.trim();
+            const allStudents = window.finalStudentsData || [];
+
+            document.getElementById('promoPageTotal').innerText = allStudents.length;
+            document.getElementById('promoPageDone').innerText = allStudents.filter(s => s.promotedSession === targetSession).length;
+            document.getElementById('promoPagePending').innerText = allStudents.filter(s => s.promotedSession !== targetSession).length;
+            document.getElementById('promoPageDropout').innerText = Object.keys(window.dropOutStudents || {}).length;
+
+            let list = allStudents.filter(s => String(s.studentClass) === String(window.currentPromoClass));
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="py-12 text-center text-slate-400">No students found in Class ${window.currentPromoClass}.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map((s, idx) => {
+                const isPromoted = (s.promotedSession === targetSession && s.promotionStatus === 'Promoted');
+                const nextClassNum = parseInt(s.studentClass) < 12 ? String(parseInt(s.studentClass) + 1) : 'PASS_OUT';
+                const defaultRoll = String(s.rollNo || (idx + 1)).padStart(2, '0');
+                const previewId = generateNewStudentId(nextClassNum, s.section, defaultRoll, targetSession);
+                const safeKey = sanitizeFbKey(s.applicationId || s.studentId);
+
+                return `
+                    <tr data-promokey="${safeKey}" data-origid="${s.studentId}" class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-center"><input type="checkbox" class="promo-checkbox rounded" ${isPromoted ? '' : 'checked'}></td>
+                        <td class="px-4 py-3 font-mono text-xs font-bold">${s.studentId}</td>
+                        <td class="px-4 py-3 font-semibold">${s.studentName}</td>
+                        <td class="px-4 py-3 text-xs">${s.gender || 'NOT SET'}</td>
+                        <td class="px-4 py-3 text-xs">Cls ${s.studentClass} • ${s.section} • Roll ${s.rollNo}</td>
+                        <td class="px-4 py-3 bg-blue-50">
+                            <select onchange="updateRowIdPreview(this)" class="promo-new-class p-1.5 text-xs font-bold border rounded">
+                                ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${String(n) === nextClassNum ? 'selected' : ''}>Class ${n}</option>`).join('')}
+                                <option value="PASS_OUT">Pass Out (Class 12)</option>
+                            </select>
+                        </td>
+                        <td class="px-4 py-3 bg-blue-50">
+                            <select onchange="updateRowIdPreview(this)" class="promo-new-sec p-1.5 text-xs font-bold border rounded">
+                                <option value="MAHA" ${s.section === 'MAHA' ? 'selected' : ''}>MAHA</option>
+                                <option value="RISHI" ${s.section === 'RISHI' ? 'selected' : ''}>RISHI</option>
+                                <option value="NONE" ${s.section === 'NONE' ? 'selected' : ''}>NONE</option>
+                            </select>
+                        </td>
+                        <td class="px-4 py-3 bg-blue-50"><input type="text" value="${defaultRoll}" oninput="updateRowIdPreview(this)" class="promo-new-roll w-16 p-1.5 text-xs font-bold text-center border rounded"></td>
+                        <td class="px-4 py-3 bg-emerald-50 font-mono text-xs font-bold text-emerald-700 promo-id-preview">${previewId}</td>
+                        <td class="px-4 py-3">${isPromoted ? `<span class="px-2.5 py-1 text-xs font-bold rounded bg-emerald-100 text-emerald-700">Promoted</span>` : `<span class="px-2.5 py-1 text-xs font-bold rounded bg-amber-100 text-amber-700">Pending</span>`}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="promoteSingleStudent(this)" class="px-2.5 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Promote</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons({ root: tbody });
+        }
+
+        function updateRowIdPreview(el) {
+            const tr = el.closest('tr');
+            const newCls = tr.querySelector('.promo-new-class').value;
+            const newSec = tr.querySelector('.promo-new-sec').value;
+            const newRoll = tr.querySelector('.promo-new-roll').value;
+            const targetSession = document.getElementById('promoTargetSession').value.trim();
+            tr.querySelector('.promo-id-preview').innerText = generateNewStudentId(newCls, newSec, newRoll, targetSession);
+        }
+
+        function autoAssignNewRolls() {
+            document.querySelectorAll('#promotionTableBody tr[data-origid]').forEach((tr, i) => {
+                const rollInput = tr.querySelector('.promo-new-roll');
+                if (rollInput) { rollInput.value = String(i + 1).padStart(2, '0'); updateRowIdPreview(rollInput); }
+            });
+            showToast('Sequential Roll Numbers assigned!', 'info');
+        }
+
+        function toggleSelectAllPromo(src) {
+            document.querySelectorAll('.promo-checkbox').forEach(cb => cb.checked = src.checked);
+        }
+
+        async function promoteSingleStudent(btn) {
+            const tr = btn.closest('tr');
+            await executeRowPromotion(tr);
+            showToast('Student Promoted & New ID Generated!', 'success');
+            renderPromotionTable();
+        }
+
+        async function bulkPromoteSelected() {
+            const checked = document.querySelectorAll('.promo-checkbox:checked');
+            if (checked.length === 0) return showToast('Select at least one student.', 'error');
+            for (const cb of checked) { await executeRowPromotion(cb.closest('tr')); }
+            showToast(`Successfully promoted ${checked.length} student(s)!`, 'success');
+            renderPromotionTable();
+        }
+
+        async function executeRowPromotion(tr) {
+            const origId = tr.getAttribute('data-origid');
+            const fbKey = tr.getAttribute('data-promokey');
+            const student = (window.finalStudentsData || []).find(s => s.studentId === origId);
+            if (!student) return;
+
+            const newCls = tr.querySelector('.promo-new-class').value;
+            const newSec = tr.querySelector('.promo-new-sec').value;
+            const newRoll = String(tr.querySelector('.promo-new-roll').value || '01').padStart(2, '0');
+            const targetSession = document.getElementById('promoTargetSession').value.trim();
+
+            const newId = generateNewStudentId(newCls, newSec, newRoll, targetSession);
+            const newHySerial = generateNewSerial('HY', newCls, newRoll);
+            const newFySerial = generateNewSerial('FY', newCls, newRoll);
+
+            await db.ref(`ems_store/studentMeta/${fbKey}`).update({
+                overrideClass: newCls,
+                overrideSection: newSec,
+                overrideRoll: newRoll,
+                overrideId: newId,
+                hySerialOverride: newHySerial,
+                fySerialOverride: newFySerial,
+                promotionStatus: 'Promoted',
+                promotedSession: targetSession
+            });
+        }
+
+        async function syncAllDataToFirebaseCloud(btn) {
+            const backupPayload = {
+                backedUpAt: new Date().toLocaleString('en-IN'),
+                finalStudentsData: window.finalStudentsData || [],
+                studentMeta: window.firebaseStudentMeta || {}
+            };
+            await db.ref('ems_store/cloudBackup').set(backupPayload);
+            showToast('Backed up successfully to Firebase!', 'success');
+        }
+
+        function downloadFullSystemBackup() {
+            const blob = new Blob([JSON.stringify(window.finalStudentsData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `MVMN_Backup.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            showToast('Backup JSON Downloaded!', 'success');
+        }
+
+        async function restoreFromFirebaseSnapshot() {
+            const snap = await db.ref('ems_store/cloudBackup').once('value');
+            const backup = snap.val();
+            if (!backup) return showToast('No snapshot found!', 'error');
+            showToast('Data recovered from cloud!', 'success');
+            fetchFinalStudents();
+        }
+
+        async function processManualSheetPaste() {
+            const rawText = document.getElementById('manualSheetPasteBox').value.trim();
+            if (!rawText) return showToast('Paste rows first!', 'error');
+            const lines = rawText.split(/\r?\n/).filter(l => l.trim() !== '');
+            const manualUpdates = {};
+            let count = 0;
+
+            lines.forEach((line, idx) => {
+                const cols = line.split('\t').length > 1 ? line.split('\t') : line.split(',');
+                const c = cols.map(x => x.replace(/^"|"$/g, '').trim());
+                if (c.length < 3) return;
+
+                const studentId = c[2] || `MAN-${idx}`;
+                const studentName = (c[3] || c[1] || '').toUpperCase();
+                const studentClass = c[4] || c[2] || '1';
+                const section = (c[5] || 'NONE').toUpperCase();
+                const rollNo = String(c[6] || '01').padStart(2, '0');
+                const gender = (c[14] || c[10] || 'MALE').toUpperCase();
+
+                const key = sanitizeFbKey(studentId);
+                manualUpdates[key] = { studentId, studentName, studentClass, section, rollNo, gender, isManualFirebaseOnly: true };
+                count++;
+            });
+
+            await db.ref('ems_store/manualStudents').update(manualUpdates);
+            closeModal('dataMigrationModal');
+            fetchFinalStudents();
+            showToast(`Successfully pasted ${count} students!`, 'success');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            switchTab('dashboard');
+            fetchSystemConfig();
+        });
+    </script>
+</body>
+</html>
